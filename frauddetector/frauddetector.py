@@ -22,7 +22,6 @@ import time
 from IPython.display import clear_output, JSON
 
 import boto3
-import numpy as np
 import pandas as pd
 
 lh = logging.getLogger('frauddetector')
@@ -85,6 +84,12 @@ class FraudDetector:
     def get_entity_types(self):
         """Get entities already created in Amazon Fraud Detector cloud service"""
         self.entities = self.fd.get_entity_types()
+
+    """    
+    @property
+    def entities
+        pass
+    """
     
     @staticmethod
     def get_event_types(self):
@@ -443,7 +448,7 @@ class FraudDetector:
                 # create label via Boto3 SDK fd instance
                 lh.debug("put_label: {}".format(l['name']))
                 response = self.fd.put_label(
-                    name=l['name'],
+                    name=str(l['name']),
                     description=l['name']
                 )
                 lh.info("create_labels: label {} created".format(l['name']))
@@ -497,18 +502,31 @@ class FraudDetector:
                 description=outcome[1]
             )
 
-    def delete_outcomes(self, outcomes_list):
-        """ Delete outcomes for detector
-            Args:
-                :outcomes_list:          list; list of (outcome_name, outcome_description) tuples
+    def delete_outcomes(self, outcome_names):
+        """Delete Amazon FraudDetector outcomes. Cannot delete outcome that is used in a rule-version.
+
+        Args:
+            :outcome_names:      list of outcome names to delete
+
+        Returns:
+            :response_all:   {variable_name: API-response-status, variable_name: API-response-status} dict
         """
-        for outcome in outcomes_list:
-            self.fd.delete_outcome(
-                name=outcome[0]
-            )
+
+        response_all = []
+        for name in outcome_names:
+            response = self.fd.delete_outcome(name=name)
+            lh.info("delete_outcomes: label {} deleted".format(name))
+            status = {name: response['ResponseMetadata']['HTTPStatusCode']}
+            response_all.append(status)
+
+        # convert list of dicts to single dict
+        response_all = {k: v for d in response_all for k, v in d.items()}
+        return response_all
 
     @property
     def outcomes(self):
+        """Outcomes are not directly linked to the detector-instance - they can be referenced and shared by multiple
+        detectors"""
         outcomes_response = self.fd.get_outcomes()['outcomes']
         names = [x['name'] for x in outcomes_response]
         descriptions = [x['description'] for x in outcomes_response]
@@ -578,10 +596,14 @@ class FraudDetector:
         if "." not in model_version_number:
             model_version_number = model_version_number + ".00"
 
-        response = self.fd.get_model_version(modelId=self.model_name,
-                                         modelType=self.model_type,
-                                         modelVersionNumber=model_version_number)
-        return response['status']
+        try:
+            response = self.fd.get_model_version(modelId=self.model_name,
+                                             modelType=self.model_type,
+                                             modelVersionNumber=model_version_number)
+            return response['status']
+        except self.fd.exceptions.ResourceNotFoundException:
+            return None
+
 
     def activate(self, outcomes_list=None):
         """create a Fraud Detector detector and activate a model with outcomes
@@ -797,3 +819,6 @@ class FraudDetector:
             detectorVersionId=self.detector_version
         )
         return response
+
+
+

@@ -132,7 +132,9 @@ class TestFraudDetectorClass:
         assert (set(outcomes)).issuperset(
             test_outcomes)
 
-        self.fd.delete_outcomes(test_outcomes)
+        # clean-up test outcomes
+        outcome_names = [x[0] for x in test_outcomes]
+        self.fd.delete_outcomes(outcome_names)
         outcomes = self.fd.outcomes
         assert (set(test_outcomes)) not in set(outcomes)
 
@@ -183,7 +185,8 @@ class TestFraudDetectorClass:
         detector.delete_rules(live_test_rules)
 
         # clean-up test outcomes
-        detector.delete_outcomes(test_outcomes)
+        outcome_names = [x[0] for x in test_outcomes]
+        detector.delete_outcomes(outcome_names)
 
         assert "test_rule1" not in [r['ruleId'] for r in detector.rules]
 

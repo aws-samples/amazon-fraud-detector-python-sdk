@@ -1,6 +1,33 @@
 # Fraud Detector SDK User Guide 
 
+## Data Preparation
+
+#### Event Timestamp ####
+The Amazon Fraud Detector service requires that a column called `EVENT_TIMESTAMP` is included in the data-set.
+This is the timestamp when the event occurred. 
+The timestamp must be in *ISO 8601 standard format in UTC* - for example `2021-12-22T03:20:11Z` (https://en.wikipedia.org/wiki/ISO_8601).
+
+#### Event Labels ####
+The Amazon Fraud Detector service requires that the outcome-label for training data is in a data-column labeled `EVENT_LABEL`. 
+Data in this column must be of type *String*, not a `1`/`0` label - these should be represented as `fraud`/`legit`, or similar appropriate string label values.  
+These label-strings should match the labels that are created in the Amazon Fraud Detector service's context (this can be achieved with the `FraudDetector().create_labels()` method)
+
+#### New Line Characters ####
+
+Use LF or CR-LF characters only, "unbound CR characters" (i.e. MacOS default) are not supported
+
 ## Instantiate a Fraud Detector instance
+
+**Class** `frauddetector.FraudDetector()`  
+
+**Parameters**  
+`entity_type` : name-label for the type of fraud - EG registration, credit_card, phone_call  
+`event_type` : name-label for the type of event - EG user_registration, card_transaction, CDR     
+`detector_name` : name-label for this fraud detector  
+`model_name` : name-label for the model  
+`model_version` : version-number for the model  
+`model_type` : one of `ONLINE_FRAUD_INSIGHTS` or `TRANSACTION_FRAUD_INSIGHTS` ref: https://docs.aws.amazon.com/frauddetector/latest/ug/choosing-model-type.html    
+`detector_version` : version-number for this detector (combining rules, model, outcomes model)  
 
 ```python
 from frauddetector import frauddetector
@@ -18,6 +45,7 @@ detector = frauddetector.FraudDetector(
 
 ## Profiling data
 
+The data to be profiled should include the fraud-outcome Label identifier.  This field needs to be named `EVENT_LABEL` as this naming convention is built into the product.
 Assuming the data you are going to load contains the columns **EVENT_TIMESTAMP** (the timestamps of your events) and **EVENT_LABEL** (your label "legit" or "fraud"), e.g.
 
 ![head_data](./images/Dataset-Head.png)
@@ -64,7 +92,7 @@ data_schema, variables, labels = profiler.get_frauddetector_inputs(
 
 ```
 
-Note: The `filter_warnings` flag filters data points out that produce a warning. Per default it is set to **False**.
+Note: The `filter_warnings` flag filters data points out that produce a warning. By default it is set to **False**.
 
 The `Profiler` class currently filters for:
 
@@ -73,9 +101,9 @@ The `Profiler` class currently filters for:
 * IP_ADDRESS
 * EMAIL_ADDRESS
 
-For other data types we advice to run some pre-checks on your data. The `Profiler` will catogrize these entries as **UNKNOWN**.
+For other data types run manual pre-checks on the data. The `Profiler` will catogrize these entries as **UNKNOWN**.
 
-You will also find a `get_summary_stats_table` method that summarizes the categories found in you table:
+You will also find a `get_summary_stats_table` method that summarizes the categories found in the source data:
 
 ```python
 summary_table = profiler.get_summary_stats_table(data=df)
@@ -90,12 +118,13 @@ This method also has arguments `event_column` and `timestamp_columns`.
 
 First instantiate a Fraud Detector SDK instance (called `detector` in the example below)
 
-Next configure an AWS Role with appropriate privileges to run Amazon Fraud Detector and access the training data:
+Next configure an AWS Role with appropriate privileges to run Amazon Fraud Detector and access the training data.  
+For full access privileges, use a role that has the policy `AmazonFraudDetectorFullAccessPolicy` attached to it.
 ```python
 # https://docs.aws.amazon.com/frauddetector/latest/ug/security-iam.html
 role_arn="arn:aws:iam::9999999999:role/MyFraudDetectorRole"
 ```
-Either manually define the `variables` and `labels` definitions or use the Profiler to extract these definitions from some sample data. Then train a model using the `fit()` method:
+Either manually define the `variables` and `labels` definitions or use the Profiler to extract these definitions from some sample data. Make sure the field containing the fraud-outcome to train the model against is named `EVENT_LABEL`.  Then train a model using the `fit()` method:
 
 ```python
 detector.fit(data_schema=data_schema
