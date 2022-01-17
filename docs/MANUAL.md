@@ -75,6 +75,17 @@ The `Profiler` class currently filters for:
 
 For other data types we advice to run some pre-checks on your data. The `Profiler` will catogrize these entries as **UNKNOWN**.
 
+You will also find a `get_summary_stats_table` method that summarizes the categories found in you table:
+
+```python
+summary_table = profiler.get_summary_stats_table(data=df)
+
+```
+
+![summary_table](./images/Summary-Table.png)
+
+This method also has arguments `event_column` and `timestamp_columns`.
+
 ## Train a model
 
 First instantiate a Fraud Detector SDK instance (called `detector` in the example below)
