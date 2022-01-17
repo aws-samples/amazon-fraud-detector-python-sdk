@@ -117,8 +117,7 @@ class Profiler:
                 label_list (list): List of dicts with label names
         """
         if len(data[event_column].unique()) > 2:
-            logging.error(f"Target column {event_column} has more than 2 unique values!")
-            return None
+            logging.error(f"Target column {event_column} has more than 2 unique values! Please review your data and fix the {event_column} content!")
         labels = data[event_column].unique().tolist()
         label_list = [{"name": x} for x in labels]
         return label_list
@@ -148,6 +147,28 @@ class Profiler:
                 })
         return variables
     
+    def __check_column_in_dataframe(self, data, event_column="EVENT_LABEL", timestamp_column="EVENT_TIMESTAMP"):
+        """Check if columns exist in DataFrame.
+            
+            Args:
+                data (pandas.core.frame.DataFrame): panda's dataframe to check
+                event_column (str): column that contains the target event
+                timestamp_column (str): column that contains the timestamp
+            Returns:
+                column_in_df (boolean): Flag to tell if the column
+        """
+        data_columns = data.columns
+        column_in_df = True
+        if event_column not in data_columns:
+            logging.warning(f"{event_column} can't be found as a column in your DataFrame! Columns found in DataFrame:")
+            logging.warning(f"{data_columns}")
+            column_in_df = False
+        if timestamp_column not in data_columns:
+            logging.warning(f"{timestamp_column} can't be found as a column in your DataFrame! Columns found in DataFrame:")
+            logging.warning(f"{data_columns}")
+            column_in_df = False
+        return column_in_df
+    
     def get_summary_stats_table(self, data, event_column="EVENT_LABEL", timestamp_column="EVENT_TIMESTAMP"):
         """Get a summary stats table with variable warnings
             
@@ -158,6 +179,8 @@ class Profiler:
             Returns:
                 df (pandas.core.frame.DataFrame): DataFrame of summary statistics, training data schema, event variables and event lables
         """
+        if not self.__check_column_in_dataframe(data=data, event_column=event_column, timestamp_column=timestamp_column):
+            sys.exit("Please fix your column labels!")
         df = data.copy("deep")
         df = self.__calculate_summary_stats(data, event_column=event_column)
         df = self.__map_feature_types(df_stats=df)
@@ -181,7 +204,7 @@ class Profiler:
         """
         df = df_warn.copy("deep")
         if filter_warnings:
-            df = df[(df_stats['feature_warning'] != 'NO WARNING')]
+            df = df[(df['feature_warning'] != 'NO WARNING')].reset_index(drop=True)
         variables = self.__create_variables(df_stats=df, event_column=event_column, timestamp_column=timestamp_column)
         labels = self.__create_labels(data=data, event_column=event_column)
 
@@ -211,6 +234,8 @@ class Profiler:
             Returns:
                 data_schema (dict): The training data schema for AFD
         """
+        if not self.__check_column_in_dataframe(data=data, event_column=event_column, timestamp_column=timestamp_column):
+            sys.exit("Please fix your column labels!")
         df = data.copy("deep")
         df_warn = self.get_summary_stats_table(data=df, event_column=event_column)
         return self.__extract_frauddetector_schema(
