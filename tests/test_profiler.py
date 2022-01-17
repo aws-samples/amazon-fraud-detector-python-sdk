@@ -57,6 +57,11 @@ def test___calculate_summary_stats():
     stats = prof._Profiler__calculate_summary_stats(data=DATA)
     assert_frame_equal(stats, SUMMARY)
     
+def test___check_column_in_dataframe():
+    prof = profiler.Profiler()
+    column_in_df = prof._Profiler__check_column_in_dataframe(data=DATA)
+    assert column_in_df == True
+    
 def test___map_feature_types():
     prof = profiler.Profiler()
     SUMMARY["feature_type"] = ['CATEGORY', 'NUMERIC', 'TARGET', 'EVENT_TIMESTAMP']
