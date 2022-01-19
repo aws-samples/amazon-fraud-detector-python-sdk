@@ -72,13 +72,13 @@ class FraudDetector:
             self.model_version = model_version
         self.model_type = model_type
         #Initialize empty variables
-        self.project_variables = None
-        self.project_labels = None
-        self.variables = None
-        self.labels = None
+        #self.project_variables = None
+        #self.project_labels = None
+        #self.variables = None
+        #self.labels = None
         self.events = None
         self.entities = None
-        self.models = None
+        #self.models = None
 
     @staticmethod
     def get_entity_types(self):
@@ -96,29 +96,81 @@ class FraudDetector:
         """Get events already created in Amazon Fraud Detector cloud service"""
         self.events = self.fd.get_event_types()
 
-    @staticmethod
     def get_variables(self):
-        """Get variables already created in Amazon Fraud Detector cloud service"""
-        self.variables = self.fd.get_variables()
+        """Get variable details already created in Amazon Fraud Detector cloud service"""
+        return self.fd.get_variables()
+
+    @property
+    def variables(self):
+        """List of available variables by name in Amazon Fraud Detector cloud service"""
+        return [x['name'] for x in self.get_variables()['variables']]
         
     @staticmethod
     def get_labels(self):
         """Get labels already created in Amazon Fraud Detector cloud service"""
         self.variables = self.fd.get_labels()
-        
-    @staticmethod
-    def get_models(self):
-        """Get models already created in Amazon Fraud Detector cloud service"""
-        self.models = self.fd.get_models()
+
+    def get_models(self, model_version=None):
+        """Get model details for all model versions related to this instances model_id (model_name)"""
+        if model_version:
+            return self.fd.describe_model_versions(modelId=self.model_name,
+                                                   modelVersionNumber=self.model_version,
+                                                   modelType=self.model_type)['modelVersionDetails']
+        else:
+            return self.fd.describe_model_versions(modelId=self.model_name, modelType=self.model_type)['modelVersionDetails']
+
+    @property
+    def model_status(self):
+        model_version_number = str(self.model_version)
+        # check if missing decimal point - if so append ".00" to work around format requirement in FD
+        if "." not in model_version_number:
+            model_version_number = model_version_number + ".00"
+
+        try:
+            response = self.fd.get_model_version(modelId=self.model_name,
+                                             modelType=self.model_type,
+                                             modelVersionNumber=model_version_number)
+            return response['status']
+        except self.fd.exceptions.ResourceNotFoundException:
+            return None
+
+    def get_model_variables(self):
+        """Get variables and their details associated with this instance's model_id (model_name)"""
+        return self.get_models(model_version=self.model_version)[0]['trainingDataSchema']['modelVariables']
+
+    @property
+    def model_variables(self):
+        """List of variable-names for this detector-model instance"""
+        return self.get_model_variables()
+
+    @property
+    def model_labels(self):
+        """List of labels associated with this detector-model instance"""
+        labels = self.get_models(model_version=self.model_version)[0]['trainingDataSchema']['labelSchema']
+        return labels
+
+    #@property
+    #def model_type(self):
+    #    return self.get_models(model_version=self.model_version)[0]['modelType']
+
+    @property
+    def outcomes(self):
+        """Outcomes are not directly linked to the detector-instance - they can be referenced and shared by multiple
+        detectors"""
+        outcomes_response = self.fd.get_outcomes()['outcomes']
+        names = [x['name'] for x in outcomes_response]
+        descriptions = [x['description'] for x in outcomes_response]
+
+        return list(zip(names, descriptions))
     
-    def _setup_project(self):
-        """Automatically setup your Amazon Fraud Detector project."""
-        response = self.create_entity_type()
-        response = self.create_labels(labels=self.project_labels)
-        response = self.create_variables(variables=self.project_variables)
-        response = self.create_event_type(variables=self.project_variables, labels=self.project_labels)
-        response = self.create_model()
-        return "Success"
+    #def _setup_project(self):
+    #    """Automatically setup your Amazon Fraud Detector project."""
+    #    response = self.create_entity_type()
+    #    response = self.create_labels(labels=self.project_labels)
+    #    response = self.create_variables(variables=self.project_variables)
+    ##    response = self.create_event_type(variables=self.project_variables, labels=self.project_labels)
+    ##    response = self.create_model()
+    #    return "Success"
     
     def create_model(self):
         """Create Amazon FraudDetector model. Wraps the boto3 SDK API to allow bulk operations.
@@ -151,9 +203,6 @@ class FraudDetector:
             status = {self.model_name: "skipped"}
             response_all.append(status)
 
-        # update myself
-        self.models = self.fd.get_models()
-
         # convert list of dicts to single dict
         response_all = {k: v for d in response_all for k, v in d.items()}
         return response_all
@@ -169,16 +218,12 @@ class FraudDetector:
         return response
     
     def delete_model(self):
-        """Delete Amazon FraudDetector event. Wraps the boto3 SDK API to allow bulk operations.
-
-        Args:
-            :event:          name of the event to delete
+        """Delete Amazon FraudDetector model. All versions need to be deleted first
 
         Returns:
-            :response:
+            :status-code:
         """
 
-        # delete model
         response = self.fd.delete_model(
             modelId=self.model_name,
             modelType=self.model_type
@@ -186,10 +231,25 @@ class FraudDetector:
         lh.info("delete_model: model {} deleted".format(self.model_name,self.model_version))
         status = {self.model_name: response['ResponseMetadata']['HTTPStatusCode']}
 
-        # update myself
-        self.models = self.fd.get_models()
-
         return status
+
+    def delete_model_version(self, model_version=None):
+        """Delete this instance's Amazon FraudDetector model-version. Wraps the boto3 SDK API to allow bulk operations.
+
+        Returns:
+            :response:
+        """
+
+        if model_version:
+            mv = model_version
+        else:
+            mv = self.model_version
+
+        return self.fd.delete_model_version(
+            modelId=self.model_name,
+            modelType=self.model_type,
+            modelVersionNumber=mv)
+
         
     def create_entity_type(self):
         """Create Amazon FraudDetector entity. Wraps the boto3 SDK API to allow bulk operations.
@@ -220,9 +280,6 @@ class FraudDetector:
             status = {self.event_type: "skipped"}
             response_all.append(status)
 
-        # update myself
-        self.entities = self.fd.get_entity_types()
-
         # convert list of dicts to single dict
         response_all = {k: v for d in response_all for k, v in d.items()}
         return response_all
@@ -243,9 +300,6 @@ class FraudDetector:
         lh.info("delete_entity_type: entity {} deleted".format(self.entity_type))
         status = {self.entity_type: response['ResponseMetadata']['HTTPStatusCode']}
         response_all.append(status)
-
-        # update myself
-        self.entities = self.fd.get_entity_types()
 
         # convert list of dicts to single dict
         response_all = {k: v for d in response_all for k, v in d.items()}
@@ -287,7 +341,6 @@ class FraudDetector:
         response_all = []
 
         if self.event_type not in existing_names:
-
             lh.debug("create_event_type: {}".format(self.event_type))
             # create event via Boto3 SDK fd instance
             response = self.fd.put_event_type(
@@ -303,9 +356,6 @@ class FraudDetector:
             lh.warning("create_event_type: event {} already exists, skipping".format(self.event_type))
             status = {self.event_type: "skipped"}
             response_all.append(status)
-
-        # update myself
-        self.events = self.fd.get_event_types()
 
         # convert list of dicts to single dict
         response_all = {k: v for d in response_all for k, v in d.items()}
@@ -328,9 +378,6 @@ class FraudDetector:
 
         status = {self.event_type: response['ResponseMetadata']['HTTPStatusCode']}
         response_all.append(status)
-
-        # update myself
-        self.events = self.fd.get_event_types()
 
         # convert list of dicts to single dict
         response_all = {k: v for d in response_all for k, v in d.items()}
@@ -389,9 +436,6 @@ class FraudDetector:
                 status = {v['name']: "skipped"}
                 response_all.append(status)
 
-        # update myself
-        self.variables = self.fd.get_variables()
-
         # convert list of dicts to single dict
         response_all = {k: v for d in response_all for k, v in d.items()}
         return response_all
@@ -413,9 +457,6 @@ class FraudDetector:
             lh.info("delete_variables: variable {} deleted".format(vname))
             status = {vname: response['ResponseMetadata']['HTTPStatusCode']}
             response_all.append(status)
-
-        # update myself
-        self.variables = self.fd.get_variables()
 
         # convert list of dicts to single dict
         response_all = {k: v for d in response_all for k, v in d.items()}
@@ -459,9 +500,6 @@ class FraudDetector:
                 status = {l['name']: "skipped"}
                 response_all.append(status)
 
-        # update myself
-        self.variables = self.fd.get_labels()
-
         # convert list of dicts to single dict
         response_all = {k: v for d in response_all for k, v in d.items()}
         return response_all
@@ -483,9 +521,6 @@ class FraudDetector:
             lh.info("delete_labels: label {} deleted".format(lname))
             status = {lname: response['ResponseMetadata']['HTTPStatusCode']}
             response_all.append(status)
-
-        # update myself
-        self.variables = self.fd.get_labels()
 
         # convert list of dicts to single dict
         response_all = {k: v for d in response_all for k, v in d.items()}
@@ -523,15 +558,6 @@ class FraudDetector:
         response_all = {k: v for d in response_all for k, v in d.items()}
         return response_all
 
-    @property
-    def outcomes(self):
-        """Outcomes are not directly linked to the detector-instance - they can be referenced and shared by multiple
-        detectors"""
-        outcomes_response = self.fd.get_outcomes()['outcomes']
-        names = [x['name'] for x in outcomes_response]
-        descriptions = [x['description'] for x in outcomes_response]
-
-        return list(zip(names, descriptions))
 
     def fit(self, data_schema, data_location, role, variables, labels, data_source="EXTERNAL_EVENTS", wait=False):
         """Train Amazon FraudDetector model version. Wraps the boto3 SDK API to allow bulk operations.
@@ -543,16 +569,15 @@ class FraudDetector:
             :response_all:   {variable_name: API-response-status, variable_name: API-response-status} dict
         """
 
-        self.project_variables = variables
-        self.project_labels = labels
-        self.variables = self.fd.get_variables()
-        self.labels = self.fd.get_labels()
-        self.events = self.fd.get_event_types()
-        self.entities = self.fd.get_entity_types()
-        self.models = self.fd.get_models()
-        if self.variables and self.labels:
-            self._setup_project()
-
+        #self.project_variables = variables
+        #self.project_labels = labels
+        #self.variables = self.fd.get_variables()
+        #self.labels = self.fd.get_labels()
+        #self.events = self.fd.get_event_types()
+        #self.entities = self.fd.get_entity_types()
+        #self.models = self.fd.get_models()
+        #if self.variables and self.labels:
+        #    self._setup_project()
 
         event_details = {
             'dataLocation'     : data_location,
@@ -588,21 +613,6 @@ class FraudDetector:
         lh.info("\nModel training complete")
         lh.info("\nElapsed time : %s" % (etime - stime) + " seconds \n")
         return response
-
-    @property
-    def model_status(self):
-        model_version_number = str(self.model_version)
-        # check if missing decimal point - if so append ".00" to work around format requirement in FD
-        if "." not in model_version_number:
-            model_version_number = model_version_number + ".00"
-
-        try:
-            response = self.fd.get_model_version(modelId=self.model_name,
-                                             modelType=self.model_type,
-                                             modelVersionNumber=model_version_number)
-            return response['status']
-        except self.fd.exceptions.ResourceNotFoundException:
-            return None
 
 
     def activate(self, outcomes_list=None):

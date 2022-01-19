@@ -106,7 +106,7 @@ class TestFraudDetectorClass:
         self.fd.create_variables(VARIABLES)
 
         # test that the FraudDetector instance has had variables attribute updated
-        variable_names = [v['name'] for v in self.fd.variables['variables']]
+        variable_names = self.fd.variables
         # confirm variables exist as subset of all variables that exist (others may exist outside the test framework)
         assert (set(variable_names)).issuperset(
             {"test_ip_address", "test_email_address", "test_quantity", "test_widget_class"})
@@ -119,7 +119,7 @@ class TestFraudDetectorClass:
         response = self.fd.delete_variables(variables_list)
 
         # test that the FraudDetector instance has had variables attribute updated
-        variable_names = [v['name'] for v in self.fd.variables['variables']]
+        variable_names = self.fd.variables
         # confirm test variables no longer exist as subset of all variables that exist
         for v in variable_names:
             assert v not in set({"test_ip_address", "test_email_address", "test_quantity", "test_widget_class"})
@@ -138,7 +138,7 @@ class TestFraudDetectorClass:
         outcomes = self.fd.outcomes
         assert (set(test_outcomes)) not in set(outcomes)
 
-    @pytest.mark.skip(reason="can only run this if the AWS environment and pre-created model is available")
+    #@pytest.mark.skip(reason="can only run this if the AWS environment and pre-created model is available")
     def test_rules(self):
         """
         Test creating rules and outcomes for a pre-existing ACTIVE model called
@@ -190,7 +190,7 @@ class TestFraudDetectorClass:
 
         assert "test_rule1" not in [r['ruleId'] for r in detector.rules]
 
-    @pytest.mark.skip(reason="can only run this if the AWS environment and pre-created model is available")
+    #@pytest.mark.skip(reason="can only run this if the AWS environment and pre-created model is available")
     def test_predict(self):
         """Test predictions for a pre-existing ACTIVE model called
                     registration_model (Version 1.0)
