@@ -77,6 +77,7 @@ class TestFraudDetectorClass:
                                              model_name="test_credit_card_model",
                                              detector_name="test_credit_card_fraud_project",
                                              model_type="ONLINE_FRAUD_INSIGHTS",
+                                             region='eu-west-1',
                                              #variables=VARIABLES,
                                              #labels=LABELS
                                              )
@@ -166,6 +167,7 @@ class TestFraudDetectorClass:
             model_name="registration_model",
             model_version="1.0",
             model_type="ONLINE_FRAUD_INSIGHTS",
+            region='eu-west-1',
             detector_version="1"
         )
 
@@ -207,6 +209,7 @@ class TestFraudDetectorClass:
             model_name="registration_model",
             model_version="1.0",
             model_type="ONLINE_FRAUD_INSIGHTS",
+            region='eu-west-1',
             detector_version="1"
         )
 
