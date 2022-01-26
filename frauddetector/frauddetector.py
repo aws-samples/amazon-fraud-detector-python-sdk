@@ -72,8 +72,8 @@ class FraudDetector:
             self.model_version = model_version
         self.model_type = model_type
         #Initialize empty variables
-        #self.project_variables = None
-        #self.project_labels = None
+        self.project_variables = None
+        self.project_labels = None
         #self.variables = None
         #self.labels = None
         self.events = None
@@ -84,31 +84,50 @@ class FraudDetector:
     def get_entity_types(self):
         """Get entities already created in Amazon Fraud Detector cloud service"""
         self.entities = self.fd.get_entity_types()
-
-    """    
-    @property
-    def entities
-        pass
-    """
     
-    @staticmethod
-    def get_event_types(self):
-        """Get events already created in Amazon Fraud Detector cloud service"""
-        self.events = self.fd.get_event_types()
+
+    def get_event_type(self):
+        """Get event-type details for this instance created in Amazon Fraud Detector cloud service
+        Structure:
+        [
+            {
+              "name": "...",
+              "eventVariables": [
+                ...,
+                ...
+              ],
+              "labels": [
+                "legit",
+                "fraud"
+              ],
+              "entityTypes": [
+                "..."
+              ]
+            }
+        ]
+
+        """
+        return self.fd.get_event_types(name=self.event_type)["eventTypes"]
+
+    @property
+    def event_type_details(self):
+        return self.get_event_type()
 
     def get_variables(self):
-        """Get variable details already created in Amazon Fraud Detector cloud service"""
-        return self.fd.get_variables()
+        """Get variable details associated with this event-type"""
+        return self.event_type_details.pop()["eventVariables"]
 
     @property
     def variables(self):
-        """List of available variables by name in Amazon Fraud Detector cloud service"""
-        return [x['name'] for x in self.get_variables()['variables']]
-        
-    @staticmethod
+        return self.get_variables()
+
     def get_labels(self):
         """Get labels already created in Amazon Fraud Detector cloud service"""
-        self.variables = self.fd.get_labels()
+        self.fd.get_labels()
+
+    @property
+    def labels(self):
+        return self.fd.get_labels()
 
     def get_models(self, model_version=None):
         """Get model details for all model versions related to this instances model_id (model_name)"""
@@ -163,14 +182,14 @@ class FraudDetector:
 
         return list(zip(names, descriptions))
     
-    #def _setup_project(self):
-    #    """Automatically setup your Amazon Fraud Detector project."""
-    #    response = self.create_entity_type()
-    #    response = self.create_labels(labels=self.project_labels)
-    #    response = self.create_variables(variables=self.project_variables)
-    ##    response = self.create_event_type(variables=self.project_variables, labels=self.project_labels)
-    ##    response = self.create_model()
-    #    return "Success"
+    def _setup_project(self):
+        """Automatically setup your Amazon Fraud Detector project."""
+        response = self.create_entity_type()
+        response = self.create_labels(labels=self.project_labels)
+        response = self.create_variables(variables=self.project_variables)
+        response = self.create_event_type(variables=self.project_variables, labels=self.project_labels)
+        response = self.create_model()
+        return "Success"
     
     def create_model(self):
         """Create Amazon FraudDetector model. Wraps the boto3 SDK API to allow bulk operations.
@@ -569,15 +588,15 @@ class FraudDetector:
             :response_all:   {variable_name: API-response-status, variable_name: API-response-status} dict
         """
 
-        #self.project_variables = variables
-        #self.project_labels = labels
+        self.project_variables = variables
+        self.project_labels = labels
         #self.variables = self.fd.get_variables()
         #self.labels = self.fd.get_labels()
-        #self.events = self.fd.get_event_types()
-        #self.entities = self.fd.get_entity_types()
-        #self.models = self.fd.get_models()
-        #if self.variables and self.labels:
-        #    self._setup_project()
+        self.events = self.fd.get_event_types()
+        self.entities = self.fd.get_entity_types()
+        self.models = self.fd.get_models()
+        if self.project_variables and self.project_labels:
+            self._setup_project()
 
         event_details = {
             'dataLocation'     : data_location,
@@ -643,6 +662,7 @@ class FraudDetector:
             status='ACTIVE'
         )
 
+
     def delete_detector_version(self):
         """Deletes the detector-version associated with this instance"""
         response = self.fd.delete_detector_version(
@@ -650,6 +670,15 @@ class FraudDetector:
             detectorVersionId=self.detector_version
         )
         return response
+
+
+    def delete_detector(self):
+
+        response = self.fd.delete_detector(
+            detectorId=self.detector_name
+        )
+        return response
+
 
     def predict(self, event_timestamp, event_variables, entity_id="unknown"):
         """Predict using your Amazon Forecast model
@@ -679,6 +708,7 @@ class FraudDetector:
         score = response['modelScores'][0]["scores"]
         score["ruleResults"] = response['ruleResults']
         return score
+
 
     def batch_predict(self, timestamp, events=None, df=None, entity_id="unknown"):
         """Batch predict using your Amazon Forecast model
@@ -724,6 +754,7 @@ class FraudDetector:
                 print(e)
         return predictions
 
+
     @property
     def rules(self):
         """list of rules associated with this instance's detector
@@ -733,6 +764,7 @@ class FraudDetector:
             detectorId=self.detector_name
         )
         return rules['ruleDetails']
+
 
     def create_rules(self, rules):
         """Create rules by passing in a list of dictionaries with expressions and outcomes they map to
@@ -771,10 +803,10 @@ class FraudDetector:
         return responses
 
     def delete_rules(self, rules):
-        """delete a list of rules (cannot delete a rule if it is used by an ACTIVE or INACTIVE detector version)
+        """delete a set of rules (cannot delete a rule if it is used by an ACTIVE or INACTIVE detector version)
         Args:
 
-            :rules:
+            :rules:  JSON structure of rules associated with detector
         """
 
         for r in rules:
