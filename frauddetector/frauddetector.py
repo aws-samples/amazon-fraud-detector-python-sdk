@@ -72,19 +72,29 @@ class FraudDetector:
             self.model_version = model_version
         self.model_type = model_type
         #Initialize empty variables
-        self.project_variables = None
-        self.project_labels = None
+        #self.project_variables = None
+        #self.project_labels = None
         #self.variables = None
         #self.labels = None
-        self.events = None
-        self.entities = None
+        #self.events = None
+        #self.entities = None
         #self.models = None
 
-    @staticmethod
-    def get_entity_types(self):
-        """Get entities already created in Amazon Fraud Detector cloud service"""
-        self.entities = self.fd.get_entity_types()
-    
+    @property
+    def all_entities(self):
+        return self.fd.get_entity_types()
+
+    def get_entity_type(self):
+        """ Get entities for this instance"""
+        return self.fd.get_entity_types(name=self.entity_type)["eventTypes"]
+
+    @property
+    def entity_type_details(self):
+        return self.get_entity_types()
+
+    @property
+    def all_events(self):
+        return self.fd.get_event_types()
 
     def get_event_type(self):
         """Get event-type details for this instance created in Amazon Fraud Detector cloud service
@@ -113,6 +123,10 @@ class FraudDetector:
     def event_type_details(self):
         return self.get_event_type()
 
+    @property
+    def all_variables(self):
+        return self.fd.get_variables()
+
     def get_variables(self):
         """Get variable details associated with this event-type"""
         return self.event_type_details.pop()["eventVariables"]
@@ -121,9 +135,14 @@ class FraudDetector:
     def variables(self):
         return self.get_variables()
 
-    def get_labels(self):
+    @property
+    def all_labels(self):
         """Get labels already created in Amazon Fraud Detector cloud service"""
-        self.fd.get_labels()
+        return self.fd.get_labels()
+
+    def get_labels(self):
+        """Get labels associated with this Event Type"""
+        return self.event_type_details.pop()["labels"]
 
     @property
     def labels(self):
@@ -137,6 +156,11 @@ class FraudDetector:
                                                    modelType=self.model_type)['modelVersionDetails']
         else:
             return self.fd.describe_model_versions(modelId=self.model_name, modelType=self.model_type)['modelVersionDetails']
+
+    @property
+    def all_models(self):
+        """Get all models already created in Amazon Fraud Detector cloud service"""
+        return self.fd.get_models()
 
     @property
     def model_status(self):
@@ -162,11 +186,11 @@ class FraudDetector:
         """List of variable-names for this detector-model instance"""
         return self.get_model_variables()
 
-    @property
-    def model_labels(self):
-        """List of labels associated with this detector-model instance"""
-        labels = self.get_models(model_version=self.model_version)[0]['trainingDataSchema']['labelSchema']
-        return labels
+    #@property
+    #def model_labels(self):
+    #    """List of labels associated with this detector-model instance"""
+    #    labels = self.get_models(model_version=self.model_version)[0]['trainingDataSchema']['labelSchema']
+    #    return labels
 
     #@property
     #def model_type(self):
@@ -182,12 +206,12 @@ class FraudDetector:
 
         return list(zip(names, descriptions))
     
-    def _setup_project(self):
+    def _setup_project(self, variables=variables, labels=labels):
         """Automatically setup your Amazon Fraud Detector project."""
         response = self.create_entity_type()
-        response = self.create_labels(labels=self.project_labels)
-        response = self.create_variables(variables=self.project_variables)
-        response = self.create_event_type(variables=self.project_variables, labels=self.project_labels)
+        response = self.create_labels(labels)
+        response = self.create_variables(variables)
+        response = self.create_event_type(variables, labels)
         response = self.create_model()
         return "Success"
     
@@ -202,7 +226,7 @@ class FraudDetector:
             :response_all:      {variable_name: API-response-status, variable_name: API-response-status} dict
         """
 
-        existing_names = [m['modelId'] for m in self.models['models']]
+        existing_names = [m['modelId'] for m in self.all_models['models']]
         response_all = []
 
         if self.model_name not in existing_names:
@@ -281,7 +305,7 @@ class FraudDetector:
             :response_all:      {variable_name: API-response-status, variable_name: API-response-status} dict
         """
 
-        existing_names = [e['name'] for e in self.entities['entityTypes']]
+        existing_names = [e['name'] for e in self.all_entities['entityTypes']]
         response_all = []
 
         if self.entity_type not in existing_names:
@@ -356,7 +380,7 @@ class FraudDetector:
             :response_all:      {variable_name: API-response-status, variable_name: API-response-status} dict
         """
 
-        existing_names = [e['name'] for e in self.events['eventTypes']]
+        existing_names = [e['name'] for e in self.all_events['eventTypes']]
         response_all = []
 
         if self.event_type not in existing_names:
@@ -588,15 +612,15 @@ class FraudDetector:
             :response_all:   {variable_name: API-response-status, variable_name: API-response-status} dict
         """
 
-        self.project_variables = variables
-        self.project_labels = labels
+        #self.project_variables = variables
+        #self.project_labels = labels
         #self.variables = self.fd.get_variables()
         #self.labels = self.fd.get_labels()
-        self.events = self.fd.get_event_types()
-        self.entities = self.fd.get_entity_types()
-        self.models = self.fd.get_models()
-        if self.project_variables and self.project_labels:
-            self._setup_project()
+        #self.events = self.fd.get_event_types()
+        #self.entities = self.fd.get_entity_types()
+        #self.models = self.fd.get_models()
+        #if self.project_variables and self.project_labels:
+        #    self._setup_project()
 
         event_details = {
             'dataLocation'     : data_location,
