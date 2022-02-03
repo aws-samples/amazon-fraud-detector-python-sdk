@@ -52,12 +52,9 @@ class FraudDetector:
             :model_version:        model version
             :model_type:           ONLINE_FRAUD_INSIGHTS / TRANSACTION_FRAUD_INSIGHTS
             :detector_name:        name for the fraud detection project
-            :detector_version:     versioning for fraud detection
-            :variables:            AWS Fraud Detector list of JSON variable defs
-            :labels:               AWS Fraud Detector list of JSON label defs
+            :detector_version:     versioning for fraud detections
 
         """
-        # super(FraudDetector, self).__init__()
         self.fd = boto3.client("frauddetector")
         self.s3 = boto3.client("s3")
         self.iam = boto3.client('iam')
@@ -71,14 +68,6 @@ class FraudDetector:
         else:
             self.model_version = model_version
         self.model_type = model_type
-        #Initialize empty variables
-        #self.project_variables = None
-        #self.project_labels = None
-        #self.variables = None
-        #self.labels = None
-        #self.events = None
-        #self.entities = None
-        #self.models = None
 
     @property
     def all_entities(self):
@@ -185,16 +174,6 @@ class FraudDetector:
     def model_variables(self):
         """List of variable-names for this detector-model instance"""
         return self.get_model_variables()
-
-    #@property
-    #def model_labels(self):
-    #    """List of labels associated with this detector-model instance"""
-    #    labels = self.get_models(model_version=self.model_version)[0]['trainingDataSchema']['labelSchema']
-    #    return labels
-
-    #@property
-    #def model_type(self):
-    #    return self.get_models(model_version=self.model_version)[0]['modelType']
 
     @property
     def outcomes(self):
@@ -625,14 +604,6 @@ class FraudDetector:
             :response_all:   {variable_name: API-response-status, variable_name: API-response-status} dict
         """
 
-        #self.project_variables = variables
-        #self.project_labels = labels
-        #self.variables = self.fd.get_variables()
-        #self.labels = self.fd.get_labels()
-        #self.events = self.fd.get_event_types()
-        #self.entities = self.fd.get_entity_types()
-        #self.models = self.fd.get_models()
-        #if self.project_variables and self.project_labels:
         self._setup_project(variables=variables, labels=labels)
 
         event_details = {
