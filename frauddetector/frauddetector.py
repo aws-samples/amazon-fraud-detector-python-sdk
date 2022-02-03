@@ -231,7 +231,10 @@ class FraudDetector:
 
         if self.model_name not in existing_names:
 
-            lh.debug("create_model: {}".format(self.model_name))
+            lh.debug("create_model: {}, eventTypeName {}, modelId {}, modelType {}".format(self.model_name,
+                                                                                           self.event_type,
+                                                                                           self.model_name,
+                                                                                           self.model_type))
             # create event via Boto3 SDK fd instance
             response = self.fd.create_model(
                 eventTypeName=self.event_type,
@@ -403,7 +406,17 @@ class FraudDetector:
         # convert list of dicts to single dict
         response_all = {k: v for d in response_all for k, v in d.items()}
         return response_all
-    
+
+    def delete_events_by_type(self):
+        """Delete events by event-type """
+        lh.info("delete_event_type: delete events by event-type {}".format(self.event_type))
+        response = self.fd.delete_events_by_event_type(
+            eventTypeName=self.event_type
+        )
+        status = {self.event_type: response['ResponseMetadata']['HTTPStatusCode']}
+        return status
+
+
     def delete_event_type(self):
         """Delete Amazon FraudDetector event. Wraps the boto3 SDK API to allow bulk operations.
 
@@ -414,11 +427,11 @@ class FraudDetector:
             :response_all:   {variable_name: API-response-status, variable_name: API-response-status} dict
         """
         response_all = []
-        lh.info("delete_event_type: event {}".format(self.event_type))
+
+        lh.info("delete_event_type: delete event-type {}".format(self.event_type))
         response = self.fd.delete_event_type(
             name=self.event_type,
         )
-
         status = {self.event_type: response['ResponseMetadata']['HTTPStatusCode']}
         response_all.append(status)
 
@@ -620,7 +633,7 @@ class FraudDetector:
         #self.entities = self.fd.get_entity_types()
         #self.models = self.fd.get_models()
         #if self.project_variables and self.project_labels:
-        #    self._setup_project()
+        self._setup_project(variables=variables, labels=labels)
 
         event_details = {
             'dataLocation'     : data_location,
