@@ -38,7 +38,7 @@ class FraudDetector:
     """
 
     def __init__(self, entity_type, event_type, model_name, model_version, model_type,
-                 detector_name, detector_version="1"):
+                 detector_name, region, detector_version="1"):
         """Build, train and deploy Amazon Fraud Detector models.
 
         Technical documentation on how Amazon Fraud Detector works can be
