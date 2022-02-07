@@ -14,6 +14,8 @@
 
 import json
 import logging
+import sys
+
 import pytest
 
 from frauddetector import frauddetector
@@ -77,10 +79,8 @@ class TestFraudDetectorClass:
                                              model_name="test_credit_card_model",
                                              detector_name="test_credit_card_fraud_project",
                                              model_type="ONLINE_FRAUD_INSIGHTS",
-                                             region='eu-west-1',
-                                             #variables=VARIABLES,
-                                             #labels=LABELS
                                              )
+
 
     @classmethod
     def teardown_class(cls):
@@ -106,24 +106,30 @@ class TestFraudDetectorClass:
         # add variables
         self.fd.create_variables(VARIABLES)
 
-        # test that the FraudDetector instance has had variables attribute updated
-        variable_names = [v['name'] for v in self.fd.variables['variables']]
+        # test that variables have been created in the AWS Fraud Detector environment
+        variable_names = [v['name'] for v in self.fd.all_variables['variables']]
         # confirm variables exist as subset of all variables that exist (others may exist outside the test framework)
         assert (set(variable_names)).issuperset(
             {"test_ip_address", "test_email_address", "test_quantity", "test_widget_class"})
 
-        # remove variables
-        status = self.fd.delete_model()
+
+        #status = self.fd.delete_model()
         #print(status)
-        self.fd.delete_event_type()
+        #print(self.fd.event_type_details)
+        #self.fd.delete_event_type()
+
+        # remove variables
         variables_list = [v['name'] for v in VARIABLES]
         response = self.fd.delete_variables(variables_list)
 
         # test that the FraudDetector instance has had variables attribute updated
-        variable_names = [v['name'] for v in self.fd.variables['variables']]
+        variable_names = [v['name'] for v in self.fd.all_variables['variables']]
         # confirm test variables no longer exist as subset of all variables that exist
         for v in variable_names:
             assert v not in set({"test_ip_address", "test_email_address", "test_quantity", "test_widget_class"})
+
+        # test creating the full "project" for training - event-type with labels and variables, entity type and model
+        self.fd._setup_project(variables=VARIABLES, labels=LABELS)
 
     def test_fraud_outcomes(self):
         test_outcomes = [("test_outcome1", "this is test outcome 1"), ("test_outcome2", "this is test outcome 2")]
@@ -133,7 +139,9 @@ class TestFraudDetectorClass:
         assert (set(outcomes)).issuperset(
             test_outcomes)
 
-        self.fd.delete_outcomes(test_outcomes)
+        # clean-up test outcomes
+        outcome_names = [x[0] for x in test_outcomes]
+        self.fd.delete_outcomes(outcome_names)
         outcomes = self.fd.outcomes
         assert (set(test_outcomes)) not in set(outcomes)
 
@@ -185,7 +193,8 @@ class TestFraudDetectorClass:
         detector.delete_rules(live_test_rules)
 
         # clean-up test outcomes
-        detector.delete_outcomes(test_outcomes)
+        outcome_names = [x[0] for x in test_outcomes]
+        detector.delete_outcomes(outcome_names)
 
         assert "test_rule1" not in [r['ruleId'] for r in detector.rules]
 
