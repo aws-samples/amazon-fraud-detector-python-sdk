@@ -233,3 +233,79 @@ class TestFraudDetectorClass:
         first_rule_result = detector.predict('2021-11-12T12:00:00Z', event_variables)['ruleResults'][0]['outcomes']
         # check list of outcomes is length gt 0
         assert len(first_rule_result) > 0
+
+
+    @pytest.mark.skip(reason="can only run this if the AWS environment and pre-created model is available")
+    def test_create_new_detector_version(self):
+        """Test predictions for a pre-existing ACTIVE model called
+                    registration_model (Version 1.0)
+            that is associated with Detector
+                    registration-project (Version 1)
+            Rules and outcomes should be in place in preparation as well:
+                    rules: high_fraud_risk, low_fraud_risk, no_fraud_risk
+                    outcomes: approve_outcome, review_outcome, verify_outcome
+
+            Test has dependency on pre-creating the detector and model using /example/frauddetector_sdk_example.ipynb
+        """
+
+        detector = frauddetector.FraudDetector(
+            entity_type="registration",
+            event_type="user-registration",
+            detector_name="registration-project",
+            model_name="registration_model",
+            model_version="1.0",
+            model_type="ONLINE_FRAUD_INSIGHTS",
+            region='eu-west-1',
+            detector_version="1"
+        )
+        detector_version_rules = [{
+            'ruleId': 'high_fraud_risk',
+            'ruleVersion': '1'
+            },
+            {
+                'ruleId': 'low_fraud_risk',
+                'ruleVersion': '1'
+            },
+            {
+                'ruleId': 'no_fraud_risk',
+                'ruleVersion': '1'
+            }]
+
+        response = detector.create_new_detector_version(detector_version_rules)
+
+        assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+
+    @pytest.mark.skip(reason="can only run this if the AWS environment and pre-created model is available")
+    def test_create_new_rule_version(self):
+        """Test predictions for a pre-existing ACTIVE model called
+                    registration_model (Version 1.0)
+            that is associated with Detector
+                    registration-project (Version 1)
+            Rules and outcomes should be in place in preparation as well:
+                    rules: high_fraud_risk, low_fraud_risk, no_fraud_risk
+                    outcomes: approve_outcome, review_outcome, verify_outcome
+
+            Test has dependency on pre-creating the detector and model using /example/frauddetector_sdk_example.ipynb
+        """
+
+        detector = frauddetector.FraudDetector(
+            entity_type="registration",
+            event_type="user-registration",
+            detector_name="registration-project",
+            model_name="registration_model",
+            model_version="1.0",
+            model_type="ONLINE_FRAUD_INSIGHTS",
+            region='eu-west-1',
+            detector_version="1"
+        )
+
+        rule_object = {
+            'ruleId': 'high_fraud_risk',
+            'expression': '$registration_model_insightscore > 900',
+            'outcomes': ['verify_outcome'],
+            'ruleVersion': '2' #Need specification of correct version according to your latest rule version
+        }
+
+        response = detector.create_new_rule_version(rule_object):
+        assert response['ResponseMetadata']['HTTPStatusCode'] == 200
