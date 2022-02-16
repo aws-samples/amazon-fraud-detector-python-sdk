@@ -871,5 +871,77 @@ class FraudDetector:
         )
         return response
 
+    def create_new_rule_version(self, rule_object, language='DETECTORPL'):
+         """Create new version of an existing rule
+
+         Args:
+             :rule_object:   Dictionary containing  ruleId, expression, outcomes and ruleVersion for new rule to be created
+
+             Example of rule_object:
+             {
+              'ruleId': 'high_fraud_risk',
+              'expression': '$registration_model_jan_insightscore > 900',
+              'outcomes': ['verify_outcome'],
+              'ruleVersion': '3'
+              }
+
+         Returns:
+             :response:   dict with metadata on the created rule
+         """
+
+         response = self.fd.update_rule_version(
+             rule={
+                 'detectorId': self.detector_name,
+                 'ruleId': rule_object['ruleId'],
+                 'ruleVersion': rule_object['ruleVersion']
+             },
+             description="Rule: " + rule_object['ruleId'] + " for outcomes " + str(rule_object['outcomes']),
+             expression=rule_object['expression'],
+             language=language,
+             outcomes=rule_object['outcomes']
+         )
+         return response
+
+     def create_new_detector_version(self, detector_rules_to_attach, ruleExecutionMode='FIRST_MATCHED'):
+         """Create new version of a detector with a specific set uf rules
+
+         Args:
+             :detector_rules_to_attach:   List of dictionaries, each dict containing ruleId, ruleVersion to attach to detector
+
+             Example of detector_rules_to_attach:
+
+                 [{
+                     'ruleId': 'high_fraud_risk',
+                     'ruleVersion': '3'
+                 },
+                 {
+                     'ruleId': 'low_fraud_risk',
+                     'ruleVersion': '1'
+                 },
+                 {
+                     'ruleId': 'no_fraud_risk',
+                     'ruleVersion': '1'
+                 }]
+
+         Returns:
+             :response:   dict with metadata on the created detector version
+         """
+         detector_rules = []
+         for rule in detector_rules_to_attach:
+             rule['detectorId'] = self.detector_name
+             detector_rules.append(rule)
+
+         response = self.fd.create_detector_version(
+             detectorId=self.detector_name,
+             rules=detector_rules,
+             modelVersions=[{
+                 'modelId': self.model_name,
+                 'modelType': self.model_type,
+                 'modelVersionNumber': self.model_version
+             }],
+             ruleExecutionMode=ruleExecutionMode
+         )
+         return response
+
 
 
