@@ -55,7 +55,8 @@ class FraudDetector:
             :detector_version:     versioning for fraud detections
 
         """
-        self.fd = boto3.client("frauddetector")
+        self.region = region
+        self.fd = boto3.client("frauddetector", region_name=self.region)
         self.s3 = boto3.client("s3")
         self.iam = boto3.client('iam')
         self.entity_type = entity_type
